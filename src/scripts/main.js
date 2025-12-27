@@ -96,19 +96,19 @@ employeeForm.addEventListener('submit', (formSubmitEvent) => {
   const newRow = document.createElement('tr');
 
   const validateValue = (key, value) => {
+    if (!value) {
+      return [
+        false,
+        `${key.charAt(0).toUpperCase() + key.slice(1)} is required!`,
+      ];
+    }
+
     if (key === 'name' && value.length < 4) {
       return [false, 'Name must be at least 4 characters long'];
     }
 
     if (key === 'age' && (value < 18 || value > 90)) {
       return [false, 'Age must be between 18 and 90'];
-    }
-
-    if (!value) {
-      return [
-        false,
-        `${key.charAt(0).toUpperCase() + key.slice(1)} is required!`,
-      ];
     }
 
     return [true, null];
@@ -192,13 +192,19 @@ document.body.append(employeeForm);
 // #region Sorting Table
 const headers = table.querySelectorAll('th');
 
-headers.forEach((header, index) => {
-  let isAscending = true;
+let currentSortState = { columnIndex: null, isAscending: true };
 
+headers.forEach((header, index) => {
   header.style.cursor = 'pointer';
 
   header.addEventListener('click', () => {
     const rowsArray = Array.from(tbody.querySelectorAll('tr'));
+
+    if (currentSortState.columnIndex === index) {
+      currentSortState.isAscending = !currentSortState.isAscending;
+    } else {
+      currentSortState = { columnIndex: index, isAscending: true };
+    }
 
     rowsArray.sort((rowA, rowB) => {
       const cellsA = rowA.querySelectorAll('td');
@@ -216,10 +222,12 @@ headers.forEach((header, index) => {
       const parsedB = parseValue(cellB);
 
       if (typeof parsedA === 'number' && typeof parsedB === 'number') {
-        return isAscending ? parsedA - parsedB : parsedB - parsedA;
+        return currentSortState.isAscending
+          ? parsedA - parsedB
+          : parsedB - parsedA;
       }
 
-      return isAscending
+      return currentSortState.isAscending
         ? parsedA.toString().localeCompare(parsedB.toString())
         : parsedB.toString().localeCompare(parsedA.toString());
     });
@@ -229,8 +237,6 @@ headers.forEach((header, index) => {
     rowsArray.forEach((row) => {
       tbody.appendChild(row);
     });
-
-    isAscending = !isAscending;
   });
 });
 
@@ -258,10 +264,12 @@ table.addEventListener('click', (clickEvent) => {
 
 // #region Cell Editing
 
+let activeInputField = null;
+
 table.addEventListener('dblclick', (dblClickEvent) => {
   const clickedCell = dblClickEvent.target.closest('td');
 
-  if (!clickedCell) {
+  if (!clickedCell || activeInputField) {
     return;
   }
 
@@ -276,6 +284,8 @@ table.addEventListener('dblclick', (dblClickEvent) => {
   clickedCell.appendChild(inputField);
   inputField.focus();
 
+  activeInputField = inputField;
+
   const saveChanges = () => {
     const newValue = inputField.value.trim();
 
@@ -286,6 +296,8 @@ table.addEventListener('dblclick', (dblClickEvent) => {
       clickedCell.textContent = originalValue;
       createNotification('Error', 'Cell value cannot be empty', 'error');
     }
+
+    activeInputField = null;
   };
 
   inputField.addEventListener('blur', saveChanges);
@@ -297,6 +309,7 @@ table.addEventListener('dblclick', (dblClickEvent) => {
       inputField.removeEventListener('blur', saveChanges);
 
       clickedCell.textContent = originalValue;
+      activeInputField = null;
     }
   });
 });
